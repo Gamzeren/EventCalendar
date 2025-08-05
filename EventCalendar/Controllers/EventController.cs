@@ -23,7 +23,7 @@ namespace EventCalendar.Controllers
 
         public ActionResult EventList()
         {
-            var events = _context.Events.Include(e=>e.Category).ToList();
+            var events = _context.Events.Include(e => e.Category).ToList();
             return View(events);
         }
 
@@ -44,7 +44,7 @@ namespace EventCalendar.Controllers
 
         public JsonResult GetLastEvents()
         {
-            var events = _context.Events.Include(e=>e.Category).OrderByDescending(e => e.EventId).Take(5).ToList();
+            var events = _context.Events.Include(e => e.Category).OrderByDescending(e => e.EventId).Take(5).ToList();
             var result = events.Select(e => new
             {
                 id = e.EventId,
@@ -72,31 +72,84 @@ namespace EventCalendar.Controllers
             return Json(new { success = true, eventId = result.EventId });
         }
 
+        // Yeni metod: Tarih olmadan etkinlik ekleme (Tüm Etkinlikler bölümü için)
+        [HttpPost]
+        public JsonResult AddEventWithoutDate(string title, int categoryId)
+        {
+            var result = new Event
+            {
+                Title = title,
+                StartDate = DateTime.Now, // Geçici tarih
+                EndDate = DateTime.Now,   // Geçici tarih
+                CategoryId = categoryId
+            };
+            _context.Events.Add(result);
+            _context.SaveChanges();
+            return Json(new { success = true, eventId = result.EventId });
+        }
+
         public ActionResult UpdateEventDate(int id)
         {
-            var result=_context.Events.Find(id);
-            if (result == null) 
+            var result = _context.Events.Find(id);
+            if (result == null)
             {
                 return NotFound();
             }
-            ViewBag.Categories=_context.Categories.ToList();
+            ViewBag.Categories = _context.Categories.ToList();
             return View(result);
         }
-        //takvim sürükle bırak
+
+        // Form submit için UpdateEventDate metodu
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public JsonResult UpdateEventDate(int id, string start, string end)
+        public ActionResult UpdateEventDate(Event model)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Categories = _context.Categories.ToList();
+                return View(model);
+            }
+
+            var result = _context.Events.Find(model.EventId);
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            result.Title = model.Title;
+            result.StartDate = model.StartDate;
+            result.EndDate = model.EndDate;
+            result.CategoryId = model.CategoryId;
+
+            _context.Entry(result).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+            _context.SaveChanges();
+
+            return RedirectToAction("Index");
+        }
+
+        //takvim sürükle bırak için ayrı metod
+        [HttpPost]
+        public JsonResult UpdateEventDateAjax(int id, string start, string end)
         {
             var result = _context.Events.Find(id);
             if (result == null)
             {
                 return Json(new { success = false, message = "Event Bulunamadı" });
             }
+
             DateTime startDate, endDate;
-            if(!DateTime.TryParse(start, out startDate) || !DateTime.TryParse(end, out endDate))
+
+            // JavaScript'ten gelen tarih formatını düzgün parse et
+            //if (!DateTime.TryParse(start, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out startDate) || 
+            //    !DateTime.TryParse(end, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out endDate))
+            //{
+            //    return Json(new {success=false, message= "Geçersiz tarih formatı." });
+            //}
+            if (!DateTime.TryParse(start, null, DateTimeStyles.RoundtripKind, out startDate) ||
+    !DateTime.TryParse(end, null, DateTimeStyles.RoundtripKind, out endDate))
             {
-                return Json(new {success=false, message= "Geçersiz tarih formatı." });
+                return Json(new { success = false, message = "Geçersiz tarih formatı." });
             }
+
             result.StartDate = startDate;
             result.EndDate = endDate;
             _context.Entry(result).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
@@ -110,7 +163,7 @@ namespace EventCalendar.Controllers
             var result = _context.Events.Find(id);
             if (result == null)
             {
-                return Json(new {success=false,message = "Event Bulunamadı" });
+                return Json(new { success = false, message = "Event Bulunamadı" });
             }
             _context.Events.Remove(result);
             _context.SaveChanges();
