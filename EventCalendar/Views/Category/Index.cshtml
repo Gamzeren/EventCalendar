@@ -1,0 +1,65 @@
+﻿@model List<EventCalendar.Entities.Category>
+
+@{
+	ViewData["Title"] = "Index";
+	Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<link rel="stylesheet" href="~/css/site.css" />
+
+<h3 class="gradient-text text-center mt-4">Kategoriler</h3>
+
+<div class="card">
+	<div class="card-header" style="background-color:#8b1b27; color: white;>
+		<h3 class="card-title">Kategoriler</h3>
+	</div>
+	<!-- /.card-header -->
+	<div class="card-body p-0">
+		<table class="table">
+			<thead>
+				<tr>
+					<th style="width: 20px">#</th>
+					<th>Kategori</th>
+					<th>Renk</th>
+					<th>Sil</th>
+					<th>Güncelle</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var item in Model)
+				{
+					<tr>
+						<td>@item.CategoryId</td>
+						<td>@item.Name</td>
+						<td>
+							<div style="width: 30px; height: 20px; background-color:@item.Color; border: 1px solid #ccc; display:inline-block; margin-right:8px;"></div>
+							@item.Color
+						</td>
+						<td><button class="btn btn-sm btn-danger delete-category-btn" data-category-id="@item.CategoryId" title="Sil"><i class="fas fa-trash"></i> Sil</button></td>
+						@* <td><a href="/Category/DeleteCategory/@item.CategoryId" class="btn btn-outline-danger">Sil</a></td> *@
+						<td><a href="/Category/UpdateCategory/@item.CategoryId" class="btn btn-outline-warning">Güncelle</a></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<!-- /.card-body -->
+</div>
+<a href="/Category/AddCategory/" class="btn btn-outline-primary">Yeni Kategori Ekle</a>
+
+@section scripts {
+	<script>
+		$(document).on('click', '.delete-category-btn', function() {
+			var id = $(this).data('category-id');
+			if (confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) {
+				$.post('/Category/DeleteCategory', { id: id }, function(res) {
+					if (res.success) {
+						$("[data-category-id='" + id + "']").closest('.col-md-6, .col-lg-4').fadeOut(300, function() { $(this).remove(); });
+					} else {
+						alert('Silme başarısız: ' + (res.message || 'Bilinmeyen hata'));
+					}
+				});
+			}
+		});
+	</script>
+}
+
